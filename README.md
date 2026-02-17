@@ -12,7 +12,7 @@
 
 ```bash
 # Clone and setup
-git clone <repository-url>
+git clone https://github.com/mn-cs/fineweb-spark
 cd fineweb-spark
 ```
 
