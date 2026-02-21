@@ -4,17 +4,17 @@
 
 ## Daily Workflow
 
-**1. Pull**
+### 1. Pull
 
 ```bash
 git pull origin <MilestoneBranchName>
 ```
 
-**2. Work**
+### 2. Work
 
 - Edit files, create notebooks, write code
 
-**3. Push**
+### 3. Push
 
 ```bash
 git add .
@@ -55,6 +55,7 @@ If `git pull` shows a conflict:
 2. Edit to keep what you want
 3. Remove the markers
 4. Save and push:
+
    ```bash
    git add .
    git commit -m "Fix conflict"
