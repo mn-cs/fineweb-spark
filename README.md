@@ -117,15 +117,11 @@ The following Spark DataFrame operations were used:
 
 ## Data Visualizations
 
-All visualizations are implemented in [01_data_exploration.ipynb](notebooks/01_data_exploration.ipynb).
+The complite soursecode is in the following notebook [01_data_exploration.ipynb](notebooks/01_data_exploration.ipynb).
 
 ### 1. Documents per Quality Bucket (Bar Chart)
 
-| int_score | n_docs    | avg_tokens |
-| --------- | --------- | ---------- |
-| 3         | 8,383,873 | 1,023      |
-| 4         | 1,280,798 | 1,088      |
-| 5         | 7,430     | 894        |
+![Documents per Quality Bucket](images/qlt_bucket.png)
 
 The majority of documents fall into quality bucket 3 (86.7%), followed by bucket 4 (13.2%), with very few in bucket 5 (0.08%). This confirms a severe class imbalance that must be considered during model training.
 
@@ -133,28 +129,15 @@ The majority of documents fall into quality bucket 3 (86.7%), followed by bucket
 
 **Unique Domains:** 2,088,546
 
-| Domain                        | Count  |
-| ----------------------------- | ------ |
-| `en.wikipedia.org`            | 64,429 |
-| `www.britannica.com`          | 22,569 |
-| `www.reference.com`           | 22,180 |
-| `www.enotes.com`              | 19,872 |
-| `phys.org`                    | 15,223 |
-| `www.teacherspayteachers.com` | 14,453 |
-| `www.sciencedaily.com`        | 13,442 |
-| `www.eurekalert.org`          | 12,887 |
-| `www.bookrags.com`            | 11,953 |
-| `www.newscientist.com`        | 11,264 |
-
-only showing top 10 rows
+![Top 10 Most Frequent Web Domains](images/frq_domains.png)
 
 The dataset exhibits exceptional domain diversity with over 2 million unique sources. Top domains include educational websites (Wikipedia, Britannica), science news (Phys.org, ScienceDaily), and academic resources. Even the top domain (Wikipedia) represents <1% of total documents, confirming no single source dominates the dataset.
 
 ### 3. Token Count Distribution (Histogram)
 
-![Token Distribution](images/token_dist.png)
-
 **Note:** While the full dataset contains 9.6M documents, the visualizations below utilize a random 2% sample (~193K documents) to maintain performance while accurately representing the data distribution.
+
+![Token Distribution](images/token_dist.png)
 
 The token count distribution is heavily right-skewed. The median document length is ~629 tokens, while the mean (~1031 tokens) is larger due to a long tail extending up to 170K tokens. This indicates high variability in document length and suggests potential filtering or normalization during preprocessing.
 
