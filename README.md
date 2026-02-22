@@ -4,6 +4,8 @@
 
 This project analyzes the FineWeb-Edu (Sample-10BT) dataset using Apache Spark on SDSC Expanse High-performance computing (HPC). We explore 9.67 million educational web documents to understand data characteristics, quality distributions, and develop preprocessing strategies for educational content classification.
 
+**Notebook:** [notebooks/01_data_exploration.ipynb](notebooks/01_data_exploration.ipynb)
+
 ---
 
 ## Dataset
@@ -116,8 +118,6 @@ The following Spark DataFrame operations were used:
 ---
 
 ## Data Visualizations
-
-The complite soursecode is in the following notebook [01_data_exploration.ipynb](notebooks/01_data_exploration.ipynb).
 
 ### 1. Documents per Quality Bucket (Bar Chart)
 
