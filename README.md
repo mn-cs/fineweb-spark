@@ -1,5 +1,11 @@
 # FineWeb-Edu Large-Scale Analysis with Apache Spark
 
+[![Python](https://img.shields.io/badge/Python-3.11.6-blue)](https://www.python.org/)
+[![PySpark](https://img.shields.io/badge/PySpark-3.5.0-orange)](https://spark.apache.org/)
+[![Pandas](https://img.shields.io/badge/Pandas-2.0.3-150458)](https://pandas.pydata.org/)
+[![Matplotlib](https://img.shields.io/badge/Matplotlib-3.8.0-11557c)](https://matplotlib.org/)
+[![Seaborn](https://img.shields.io/badge/Seaborn-0.13.0-4c72b0)](https://seaborn.pydata.org/)
+
 ## Project Description
 
 This project analyzes the FineWeb-Edu (Sample-10BT) dataset using Apache Spark on SDSC Expanse High-performance computing (HPC). We explore 9.67 million educational web documents to understand data characteristics, quality distributions, and develop preprocessing strategies for educational content classification.
