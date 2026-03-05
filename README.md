@@ -171,6 +171,104 @@ The quality score ranges from approximately 2.5 to 5.34, with a median of ~2.9 a
 
 ---
 
+## Preprocessing Using Spark
+
+The following preprocessing pipeline was implemented using **Spark** to efficiently process the large-scale FineWeb-Edu dataset (9.67M documents)
+
+### 1. Filtering Invalid Documents
+
+Invalid or low-information documents were removed to reduce noise in the dataset.
+
+Filtering criteria:
+- Removed documents with **null or empty text fields**
+- Removed documents with **fewer than 50 tokens**
+- Removed documents with **text shorter than 200 characters**
+
+Implementation used Spark's `df.filter()` with built-in SQL functions.
+
+**Result:**
+- Remaining documents: **9,672,072**
+- Only ~29 documents were removed, indicating the dataset was already very clean.
+
+---
+
+### 2. Removing Duplicate Documents
+
+To ensure all documents are unique, duplicates were removed using:
+
+```python
+dropDuplicates(["id"])
+```
+
+Since the `id` field uniquely identifies each document, this guarantees that no duplicate records remain in the dataset.
+
+---
+### 3. Feature Engineering
+
+New features were created using Spark SQL Functions to extract useful structural information from the dataset.
+
+#### Domain Extraction
+
+Domain names were extracted from URLs using `regexp_extract`.
+
+Example:
+
+```
+https://en.wikipedia.org/wiki/Spark
+→ en.wikipedia.org
+```
+
+This feature can help capture information about document sources and content quality.
+
+#### Document Length Categories
+
+Documents were grouped into length buckets based on `token_count`:
+
+- **Short:** < 500 tokens  
+- **Medium:** 500–2000 tokens  
+- **Long:** > 2000 tokens  
+
+These categories may improve model interpretability and allow the model to capture patterns related to document length.
+
+Spark SQL functions used for feature engineering:
+
+- `regexp_extract`
+- `length`
+- `when`
+- `otherwise`
+
+---
+
+### 4. Feature Normalization
+
+Continuous numerical features were normalized using MinMaxScaler, scaling values to the range **[0,1]**.
+
+Normalized features:
+
+- `token_count`
+- `score`
+- `language_score`
+
+Normalization ensures features operate on comparable scales, which can improve the performance and stability of many machine learning models.
+
+---
+
+### 5. Handling Class Imbalance
+
+The dataset exhibits a strong imbalance in quality score buckets:
+
+| int_score | Documents | Percentage |
+|-----------|-----------|------------|
+| 3 | 8,383,846 | ~86.7% |
+| 4 | 1,280,796 | ~13.2% |
+| 5 | 7,430 | ~0.08% |
+
+To address this imbalance during model training, we plan to apply **stratified sampling** to downsample the majority class while preserving minority class examples. This approach helps prevent the model from becoming biased toward the dominant class.
+
+---
+
+---
+
 ## Quick Setup
 
 ```bash
