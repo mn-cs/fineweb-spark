@@ -270,6 +270,141 @@ To address this imbalance during model training, we plan to apply **stratified s
 
 ---
 
+## Machine Learning Pipeline
+
+After preprocessing, a distributed **Spark ML pipeline** was constructed to transform the text data and train classification models.
+
+The pipeline includes the following stages:
+
+### RegexTokenizer
+Splits raw document text into lowercase tokens using non-word characters as delimiters.
+
+### StopWordsRemover
+Removes common English stopwords to reduce noise and shrink the vocabulary.
+
+### Word2Vec
+Generates **10-dimensional word embeddings** from the filtered tokens to represent semantic information in the text.
+
+### Imputer
+Handles missing values in `token_count` using the **mean strategy**.
+
+### VectorAssembler (Numeric Features)
+Converts the imputed token count into a vector format required by Spark ML.
+
+### StandardScaler
+Standardizes the token count feature to have unit variance.
+
+### VectorAssembler (Final Features)
+Combines the **Word2Vec text embeddings** and **scaled numeric features** into the final `features` vector used by the model.
+
+### RandomForestClassifier
+Trains a distributed **Random Forest classifier** to predict document quality.
+
+---
+
+## Data Sampling and Train / Validation / Test Split
+
+To reduce computational cost while maintaining class balance, a **two-step sampling strategy** was applied.
+
+### 1% Subset for Training
+A small subset of the dataset was used during experimentation to allow faster training iterations.
+
+### Stratified Sampling
+
+To address the strong class imbalance in `int_score`, stratified sampling was applied with the following fractions:
+
+| Score | Fraction |
+|------|---------|
+| 0 | 1.0 |
+| 1 | 1.0 |
+| 2 | 1.0 |
+| 3 | 0.05 |
+| 4 | 0.30 |
+
+After sampling:
+
+| int_score | Documents |
+|----------|-----------|
+| 3 | 83,826 |
+| 4 | 76,394 |
+
+### Dataset Split
+
+The sampled dataset was divided into:
+
+| Dataset | Size |
+|--------|------|
+| Train | 96,141 |
+| Validation | 32,063 |
+| Test | 32,016 |
+
+The **60 / 20 / 20 split** allows model training, hyperparameter tuning, and unbiased evaluation.
+
+---
+
+## Models
+
+Two **Random Forest models** were trained to evaluate how increasing model capacity affects performance.
+
+### Model 1 — Baseline Random Forest
+
+**Hyperparameters**
+
+`numTrees = 5`, `maxDepth = 2`
+
+**Performance**
+
+| Metric | Value |
+|------|------|
+| Train Accuracy | 0.6219 |
+| Validation Accuracy | 0.6197 |
+| Test Accuracy | 0.6189 |
+
+This shallow model shows almost no overfitting but has limited predictive power.
+
+---
+
+### Model 2 — Deeper Random Forest
+
+**Hyperparameters**
+
+`numTrees = 20`, `maxDepth = 8`
+
+**Performance**
+
+| Metric | Value |
+|------|------|
+| Train Accuracy | 0.6998 |
+| Validation Accuracy | 0.6870 |
+| Test Accuracy | 0.6867 |
+
+Increasing the number of trees and tree depth significantly improves model performance while maintaining acceptable generalization.
+
+---
+
+## Model Comparison
+
+| Model | Train | Validation | Test |
+|------|------|------|------|
+| RF (numTrees=5, maxDepth=2) | 0.6219 | 0.6197 | 0.6189 |
+| RF (numTrees=20, maxDepth=8) | **0.6998** | **0.6870** | **0.6867** |
+
+The deeper Random Forest (**Model 2**) consistently performs better across all datasets.
+
+---
+
+## Best Model
+
+The best performing model was:
+
+`RandomForestClassifier (numTrees = 20, maxDepth = 8)`
+
+**Test Accuracy**
+
+`0.6867`
+
+The trained model was saved to:
+
 ---
 
 ## Quick Setup
