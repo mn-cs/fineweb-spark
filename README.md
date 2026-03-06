@@ -175,9 +175,9 @@ The quality score ranges from approximately 2.5 to 5.34, with a median of ~2.9 a
 
 The following preprocessing pipeline was implemented using **Spark** to efficiently process the large-scale FineWeb-Edu dataset (9.67M documents)
 
-### 1. Filtering Invalid Documents
+### 1. Filtering Invalid Documents and Sampling Clean Data
 
-Invalid or low-information documents were removed to reduce noise in the dataset.
+Invalid or low-information documents were removed to reduce noise in the dataset. 20% subset of Clean Data was then sampled for fast development,
 
 Filtering criteria:
 
@@ -189,8 +189,8 @@ Implementation used Spark's `df.filter()` with built-in SQL functions.
 
 **Result:**
 
-- Remaining documents: **9,672,072**
-- Only ~29 documents were removed, indicating the dataset was already very clean.
+- Remaining documents: **1,935,821**
+- Only 0.0003% of documents were removed, indicating the dataset was already very clean.
 
 ---
 
