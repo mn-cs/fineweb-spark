@@ -171,6 +171,34 @@ The quality score ranges from approximately 2.5 to 5.34, with a median of ~2.9 a
 
 ---
 
+## Milestone 3: Preprocessing & Distributed Model Training
+
+**Notebook:** [notebooks/02_preprocessing_modeling.ipynb](notebooks/02_preprocessing_modeling.ipynb)
+
+---
+
+### Distributed Computing Setup
+
+Training was performed on **SDSC Expanse** with the following Spark configuration:
+
+```python
+spark = SparkSession.builder \
+    .config("spark.driver.memory", "2g") \
+    .config("spark.executor.instances", "31") \
+    .config("spark.executor.cores", "1") \
+    .config("spark.executor.memory", "3g") \
+    .getOrCreate()
+```
+
+- **Total cores:** 32 (1 driver + 31 executors)
+- **Total memory:** ~128 GB
+
+### Spark Executors
+
+![Spark UI](images/Milestone3/spark-ui.png)
+
+---
+
 ## Preprocessing Using Spark
 
 The following preprocessing pipeline was implemented using **Spark** to efficiently process the large-scale FineWeb-Edu dataset (9.67M documents)
@@ -277,27 +305,35 @@ After preprocessing, a distributed **Spark ML pipeline** was constructed to tran
 The pipeline includes the following stages:
 
 ### RegexTokenizer
+
 Splits raw document text into lowercase tokens using non-word characters as delimiters.
 
 ### StopWordsRemover
+
 Removes common English stopwords to reduce noise and shrink the vocabulary.
 
 ### Word2Vec
+
 Generates **10-dimensional word embeddings** from the filtered tokens to represent semantic information in the text.
 
 ### Imputer
+
 Handles missing values in `token_count` using the **mean strategy**.
 
 ### VectorAssembler (Numeric Features)
+
 Converts the imputed token count into a vector format required by Spark ML.
 
 ### StandardScaler
+
 Standardizes the token count feature to have unit variance.
 
 ### VectorAssembler (Final Features)
+
 Combines the **Word2Vec text embeddings** and **scaled numeric features** into the final `features` vector used by the model.
 
 ### RandomForestClassifier
+
 Trains a distributed **Random Forest classifier** to predict document quality.
 
 ---
@@ -307,6 +343,7 @@ Trains a distributed **Random Forest classifier** to predict document quality.
 To reduce computational cost while maintaining class balance, a **two-step sampling strategy** was applied.
 
 ### 1% Subset for Training
+
 A small subset of the dataset was used during experimentation to allow faster training iterations.
 
 ### Stratified Sampling
@@ -314,29 +351,29 @@ A small subset of the dataset was used during experimentation to allow faster tr
 To address the strong class imbalance in `int_score`, stratified sampling was applied with the following fractions:
 
 | Score | Fraction |
-|------|---------|
-| 0 | 1.0 |
-| 1 | 1.0 |
-| 2 | 1.0 |
-| 3 | 0.05 |
-| 4 | 0.30 |
+| ----- | -------- |
+| 0     | 1.0      |
+| 1     | 1.0      |
+| 2     | 1.0      |
+| 3     | 0.05     |
+| 4     | 0.30     |
 
 After sampling:
 
 | int_score | Documents |
-|----------|-----------|
-| 3 | 83,826 |
-| 4 | 76,394 |
+| --------- | --------- |
+| 3         | 83,826    |
+| 4         | 76,394    |
 
 ### Dataset Split
 
 The sampled dataset was divided into:
 
-| Dataset | Size |
-|--------|------|
-| Train | 96,141 |
+| Dataset    | Size   |
+| ---------- | ------ |
+| Train      | 96,141 |
 | Validation | 32,063 |
-| Test | 32,016 |
+| Test       | 32,016 |
 
 The **60 / 20 / 20 split** allows model training, hyperparameter tuning, and unbiased evaluation.
 
@@ -354,11 +391,11 @@ Two **Random Forest models** were trained to evaluate how increasing model capac
 
 **Performance**
 
-| Metric | Value |
-|------|------|
-| Train Accuracy | 0.6219 |
+| Metric              | Value  |
+| ------------------- | ------ |
+| Train Accuracy      | 0.6219 |
 | Validation Accuracy | 0.6197 |
-| Test Accuracy | 0.6189 |
+| Test Accuracy       | 0.6189 |
 
 This shallow model shows almost no overfitting but has limited predictive power.
 
@@ -372,11 +409,11 @@ This shallow model shows almost no overfitting but has limited predictive power.
 
 **Performance**
 
-| Metric | Value |
-|------|------|
-| Train Accuracy | 0.6998 |
+| Metric              | Value  |
+| ------------------- | ------ |
+| Train Accuracy      | 0.6998 |
 | Validation Accuracy | 0.6870 |
-| Test Accuracy | 0.6867 |
+| Test Accuracy       | 0.6867 |
 
 Increasing the number of trees and tree depth significantly improves model performance while maintaining acceptable generalization.
 
@@ -384,9 +421,9 @@ Increasing the number of trees and tree depth significantly improves model perfo
 
 ## Model Comparison
 
-| Model | Train | Validation | Test |
-|------|------|------|------|
-| RF (numTrees=5, maxDepth=2) | 0.6219 | 0.6197 | 0.6189 |
+| Model                        | Train      | Validation | Test       |
+| ---------------------------- | ---------- | ---------- | ---------- |
+| RF (numTrees=5, maxDepth=2)  | 0.6219     | 0.6197     | 0.6189     |
 | RF (numTrees=20, maxDepth=8) | **0.6998** | **0.6870** | **0.6867** |
 
 The deeper Random Forest (**Model 2**) consistently performs better across all datasets.
@@ -403,7 +440,15 @@ The best performing model was:
 
 `0.6867`
 
-The trained model was saved to:
+The trained model was saved to: `../models` directory
+
+---
+
+### Fitting Analysis
+
+Model 1 sits near the **underfitting** end — a 0.30 pp train–test gap confirms good generalization but limited capacity. Model 2 introduces mild overfitting (1.31 pp gap) while delivering +6.78 pp test accuracy. Neither model is severely overfit; additional capacity and richer features are the primary levers for improvement in Milestone 4.
+
+---
 
 ---
 
