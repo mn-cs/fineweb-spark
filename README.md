@@ -262,9 +262,9 @@ The dataset exhibits a strong imbalance in quality score buckets:
 
 | int_score | Documents | Percentage |
 | --------- | --------- | ---------- |
-| 3         | 8,383,846 | ~86.7%     |
-| 4         | 1,280,796 | ~13.2%     |
-| 5         | 7,430     | ~0.08%     |
+| 3         | 1,678,010 | ~86.68%    |
+| 4         | 256,326   | ~13.24%    |
+| 5         | 1,485     | ~0.08%     |
 
 To address this imbalance during model training, we plan to apply **stratified sampling** to downsample the majority class while preserving minority class examples. This approach helps prevent the model from becoming biased toward the dominant class.
 
