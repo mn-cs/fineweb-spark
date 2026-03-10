@@ -43,3 +43,6 @@ checkpoints/
 models/*
 !models/.gitkeep
 .mpl_cache/
+
+# Logs
+wget-log*
