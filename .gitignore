@@ -12,7 +12,13 @@ __pycache__/
 *.pyc
 
 # Large data files
-data/
+data/raw/*
+data/processed/*
+
+# Keep the directory structures intact
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
 *.parquet
 *.arrow
 
@@ -34,4 +40,6 @@ slurm-*.out
 outputs/
 results/
 checkpoints/
+models/*
+!models/.gitkeep
 .mpl_cache/
