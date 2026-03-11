@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 import urllib.request
 
-from fineweb_spark.paths import RAW_DATA_DIR
+from fineweb_spark.path import RAW_DATA_DIR
 
 
 def download_fineweb_sample():
