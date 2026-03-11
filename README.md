@@ -57,7 +57,7 @@ Executor memory was set to 15GB to allow memory overhead for Spark and JVM proce
 
 Below is the DataFrame output showing multiple executors active during data loading:
 
-![Spark UI](figures/Milestone2/spark_ui.png)
+![Spark UI](reports/figures/Milestone2/spark_ui.png)
 
 ---
 
@@ -127,7 +127,7 @@ The following Spark DataFrame operations were used:
 
 ### 1. Documents per Quality Bucket (Bar Chart)
 
-![Documents per Quality Bucket](figures/Milestone2/qlt_bucket.png)
+![Documents per Quality Bucket](reports/figures/Milestone2/qlt_bucket.png)
 
 The majority of documents fall into quality bucket 3 (86.7%), followed by bucket 4 (13.2%), with very few in bucket 5 (0.08%). This confirms a severe class imbalance that must be considered during model training.
 
@@ -135,7 +135,7 @@ The majority of documents fall into quality bucket 3 (86.7%), followed by bucket
 
 **Unique Domains:** 2,088,546
 
-![Top 10 Most Frequent Web Domains](figures/Milestone2/frq_domains.png)
+![Top 10 Most Frequent Web Domains](reports/figures/Milestone2/frq_domains.png)
 
 The dataset exhibits exceptional domain diversity with over 2 million unique sources. Top domains include educational websites (Wikipedia, Britannica), science news (Phys.org, ScienceDaily), and academic resources. Even the top domain (Wikipedia) represents <1% of total documents, confirming no single source dominates the dataset.
 
@@ -143,13 +143,13 @@ The dataset exhibits exceptional domain diversity with over 2 million unique sou
 
 **Note:** While the full dataset contains 9.6M documents, the visualizations below utilize a random 2% sample (~193K documents) to maintain performance while accurately representing the data distribution.
 
-![Token Distribution](figures/Milestone2/token_dist.png)
+![Token Distribution](reports/figures/Milestone2/token_dist.png)
 
 The token count distribution is heavily right-skewed. The median document length is ~629 tokens, while the mean (~1031 tokens) is larger due to a long tail extending up to 170K tokens. This indicates high variability in document length and suggests potential filtering or normalization during preprocessing.
 
 ### 4. Quality Score Distribution (Histogram)
 
-![Score Distribution](figures/Milestone2/score_dist.png)
+![Score Distribution](reports/figures/Milestone2/score_dist.png)
 
 The quality score ranges from approximately 2.5 to 5.34, with a median of ~2.9 and mean ~3.0. The distribution is moderately right-skewed, with most documents concentrated in the lower-to-mid score range (int_score = 3). Very high-quality documents (score bucket 5) are relatively rare.
 
@@ -195,7 +195,7 @@ spark = SparkSession.builder \
 
 ### Spark Executors
 
-![Spark UI](figures/Milestone3/spark-ui.png)
+![Spark UI](reports/figures/Milestone3/spark-ui.png)
 
 ---
 
