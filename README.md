@@ -6,11 +6,16 @@
 [![Matplotlib](https://img.shields.io/badge/Matplotlib-3.8.0-11557c)](https://matplotlib.org/)
 [![Seaborn](https://img.shields.io/badge/Seaborn-0.13.0-4c72b0)](https://seaborn.pydata.org/)
 
-## Project Description
+## Introduction
 
-This project analyzes the FineWeb-Edu (Sample-10BT) dataset using Apache Spark on SDSC Expanse High-performance computing (HPC). We explore 9.67 million educational web documents to understand data characteristics, quality distributions, and develop preprocessing strategies for educational content classification.
+The web contains vast amounts of educational content, but its quality varies enormously. The FineWeb-Edu dataset assigns quality scores to nearly 10 billion tokens of web text, making it one of the largest educational content corpora available. This project trains a distributed classifier to predict those quality scores — effectively automating the judgment of whether a web document is educationally valuable.
 
-**Notebook:** [notebooks/01-data-exploration.ipynb](notebooks/01-data-exploration.ipynb)
+A reliable educational quality predictor has broad real-world impact: it can drive smarter dataset curation for training large language models, power content recommendation systems for students, and help researchers filter high-quality sources at scale.
+
+**Why this requires big data and distributed computing:**
+The FineWeb-Edu Sample-10BT subset alone contains **9.67 million documents** across 14 Parquet files. Loading, filtering, featurizing (Word2Vec over millions of documents), and training Random Forest models on this data is impractical on a single machine — it would take hours just to read the data, let alone train. Apache Spark on SDSC Expanse allows all of these steps to run in parallel across 32 cores, reducing training time from hours to seconds. Without Spark/Ray, the full pipeline would be computationally infeasible.
+
+**Notebook:** [notebooks/01-exploration.ipynb](notebooks/01-exploration.ipynb)
 
 ---
 
@@ -62,6 +67,10 @@ Below is the DataFrame output showing multiple executors active during data load
 ---
 
 ## Data Exploration
+
+**Notebook:** [notebooks/01-exploration.ipynb](notebooks/01-exploration.ipynb)
+
+---
 
 ### Number of Observations
 
@@ -155,34 +164,21 @@ The quality score ranges from approximately 2.5 to 5.34, with a median of ~2.9 a
 
 ---
 
-## Preprocessing Plan
-
-- **Filter invalid documents:** Use `df.filter()` to remove null or empty text fields, documents with fewer than 50 tokens, and documents shorter than 200 characters to reduce noise.
-
-- **Remove duplicates:** Apply `dropDuplicates(["id"])` to ensure unique documents.
-
-- **Feature engineering:** Extract domain names from URLs and create length-based categories from token_count.
-
-- **Normalization:** Scale numeric features such as token_count and score to the [0,1] range using Spark ML preprocessing tools.
-
-- **Handle class imbalance:** Since 86.7% of documents fall into quality bucket 3, we will consider stratified sampling or class weighting during model training.
-
-- **Encoding:** Apply `StringIndexer` and `OneHotEncoder` to categorical variables if used in modeling.
-
 ---
 
-## Milestone 3: Preprocessing & Distributed Model Training
+## Preprocessing
 
-**Notebook:** [notebooks/02-preprocessing-modeling.ipynb](notebooks/02-preprocessing-modeling.ipynb)
+**Notebook:** [notebooks/02-preprocessing.ipynb](notebooks/02-preprocessing.ipynb)
 
 ---
 
 ### Distributed Computing Setup
 
-Training was performed on **SDSC Expanse** with the following Spark configuration:
+Preprocessing was performed on **SDSC Expanse** with the following Spark configuration:
 
 ```python
 spark = SparkSession.builder \
+    .appName("FineWeb_Preprocessing_Pipeline") \
     .config("spark.driver.memory", "2g") \
     .config("spark.executor.instances", "31") \
     .config("spark.executor.cores", "1") \
@@ -192,6 +188,7 @@ spark = SparkSession.builder \
 
 - **Total cores:** 32 (1 driver + 31 executors)
 - **Total memory:** ~128 GB
+- **Executor memory justification:** `(128g − 2g) / (31 × 1.1 overhead) ≈ 3g` — actual usage ~104 GB, safely within 128 GB
 
 ### Spark Executors
 
@@ -199,254 +196,139 @@ spark = SparkSession.builder \
 
 ---
 
-## Preprocessing Using Spark
+### Preprocessing Pipeline
 
-The following preprocessing pipeline was implemented using **Spark** to efficiently process the large-scale FineWeb-Edu dataset (9.67M documents)
+### 1. Filtering Invalid Documents
 
-### 1. Filtering Invalid Documents and Sampling Clean Data
+Documents were filtered using Spark's `df.filter()` with the following criteria:
 
-Invalid or low-information documents were removed to reduce noise in the dataset. 20% subset of Clean Data was then sampled for fast development,
-
-Filtering criteria:
-
-- Removed documents with **null or empty text fields**
-- Removed documents with **fewer than 50 tokens**
-- Removed documents with **text shorter than 200 characters**
-
-Implementation used Spark's `df.filter()` with built-in SQL functions.
-
-**Result:**
-
-- Remaining documents: **1,935,821**
-- Only 0.0003% of documents were removed, indicating the dataset was already very clean.
+- Text is not null and longer than **200 characters**
+- `token_count` ≥ **50**
+- `language` == **"en"**
+- `language_score` ≥ **0.9**
 
 ---
 
-### 2. Removing Duplicate Documents
+### 2. Duplicate Check
 
-To ensure all documents are unique, duplicates were removed using:
+Duplicates were checked by comparing total count vs. distinct `id` count. No duplicates were found.
+
+---
+
+### 3. Stratified Sampling
+
+To address class imbalance, stratified sampling was applied using `sampleBy`:
+
+| int_score | Sample Fraction |
+| --------- | --------------- |
+| 3         | 5%              |
+| 4         | 30%             |
+| 5         | 100%            |
+
+---
+
+### 4. Feature Engineering
+
+Two new columns were added using Spark SQL functions:
+
+- **`domain`** — extracted from the URL using `regexp_extract`
+- **`length_bucket`** — categorizes documents by `token_count`:
+  - **Short:** < 500 tokens
+  - **Medium:** 500–2000 tokens
+  - **Long:** > 2000 tokens
+
+---
+
+### 5. Label Column
+
+The target variable was cast to integer:
 
 ```python
-dropDuplicates(["id"])
+df = df.withColumn("label", F.col("int_score").cast(IntegerType()))
 ```
-
-Since the `id` field uniquely identifies each document, this guarantees that no duplicate records remain in the dataset.
 
 ---
 
-### 3. Feature Engineering
+### 6. Save
 
-New features were created using Spark SQL Functions to extract useful structural information from the dataset.
+The preprocessed DataFrame was saved to `data/interim/fineweb_preprocessed.parquet`.
 
-#### Domain Extraction
+---
 
-Domain names were extracted from URLs using `regexp_extract`.
+## Model 1 — Random Forest
 
-Example:
+**Notebook:** [notebooks/03-model-1.ipynb](notebooks/03-model-1.ipynb)
+
+---
+
+### Methods
+
+#### Distributed Computing Setup
+
+Training was performed on **SDSC Expanse** using **Ray + RayDP**:
 
 ```python
-https://en.wikipedia.org/wiki/Spark
-→ en.wikipedia.org
+spark = raydp.init_spark(
+    app_name="FineWeb_Spark_on_Ray",
+    num_executors=31,
+    executor_cores=1,
+    executor_memory="4GB",
+)
 ```
 
-This feature can help capture information about document sources and content quality.
+#### Data
 
-#### Document Length Categories
+A **20% random sample** (~142,415 rows) of the preprocessed data was used, split **60 / 20 / 20** into train, validation, and test sets.
 
-Documents were grouped into length buckets based on `token_count`:
+#### Feature Engineering Pipeline
 
-- **Short:** < 500 tokens
-- **Medium:** 500–2000 tokens
-- **Long:** > 2000 tokens
+| Stage              | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `RegexTokenizer`   | Splits text into lowercase tokens on non-word characters        |
+| `StopWordsRemover` | Removes common English stop words                               |
+| `Word2Vec`         | 10-dimensional embeddings; `minCount=500`                       |
+| `Imputer`          | Fills missing `token_count` with the column mean                |
+| `VectorAssembler`  | Wraps `token_count` into a vector                               |
+| `StandardScaler`   | Standardizes `token_count` to zero mean and unit variance       |
+| `VectorAssembler`  | Combines text embeddings + scaled `token_count` into `features` |
 
-These categories may improve model interpretability and allow the model to capture patterns related to document length.
+#### Models Trained
 
-Spark SQL functions used for feature engineering:
+Two `RandomForestClassifier` models were compared:
 
-- `regexp_extract`
-- `length`
-- `when`
-- `otherwise`
+```python
+# Model 1
+rf1 = RandomForestClassifier(numTrees=5, maxDepth=2)
 
----
-
-### 4. Feature Normalization
-
-Continuous numerical features were normalized using MinMaxScaler, scaling values to the range **[0,1]**.
-
-Normalized features:
-
-- `token_count`
-- `score`
-- `language_score`
-
-Normalization ensures features operate on comparable scales, which can improve the performance and stability of many machine learning models.
+# Model 2
+rf2 = RandomForestClassifier(numTrees=20, maxDepth=8)
+```
 
 ---
 
-### 5. Handling Class Imbalance
+### Results
 
-The dataset exhibits a strong imbalance in quality score buckets:
+| Model                        | Train      | Val        | Test       | Train–Test Gap |
+| ---------------------------- | ---------- | ---------- | ---------- | -------------- |
+| RF (numTrees=5, maxDepth=2)  | 0.6133     | 0.6089     | 0.6083     | 0.0050         |
+| RF (numTrees=20, maxDepth=8) | **0.7009** | **0.6865** | **0.6866** | 0.0143         |
 
-| int_score | Documents | Percentage |
-| --------- | --------- | ---------- |
-| 3         | 1,678,010 | ~86.68%    |
-| 4         | 256,326   | ~13.24%    |
-| 5         | 1,485     | ~0.08%     |
-
-To address this imbalance during model training, we plan to apply **stratified sampling** to downsample the majority class while preserving minority class examples. This approach helps prevent the model from becoming biased toward the dominant class.
+**Best model:** `RandomForestClassifier (numTrees=20, maxDepth=8)` — saved to `models/`.
 
 ---
 
-## Machine Learning Pipeline
+### Discussion
 
-After preprocessing, a distributed **Spark ML pipeline** was constructed to transform the text data and train classification models.
-
-The pipeline includes the following stages:
-
-### RegexTokenizer
-
-Splits raw document text into lowercase tokens using non-word characters as delimiters.
-
-### StopWordsRemover
-
-Removes common English stopwords to reduce noise and shrink the vocabulary.
-
-### Word2Vec
-
-Generates **10-dimensional word embeddings** from the filtered tokens to represent semantic information in the text.
-
-### Imputer
-
-Handles missing values in `token_count` using the **mean strategy**.
-
-### VectorAssembler (Numeric Features)
-
-Converts the imputed token count into a vector format required by Spark ML.
-
-### StandardScaler
-
-Standardizes the token count feature to have unit variance.
-
-### VectorAssembler (Final Features)
-
-Combines the **Word2Vec text embeddings** and **scaled numeric features** into the final `features` vector used by the model.
-
-### RandomForestClassifier
-
-Trains a distributed **Random Forest classifier** to predict document quality.
+- **Model 1** sits toward **underfitting** — the 0.5 pp train–test gap shows no overfitting, but `maxDepth=2` limits the model to simple decision boundaries.
+- **Model 2** shows **mild overfitting** (1.4 pp gap) but delivers +6.8 pp test accuracy, sitting in a better position on the bias–variance tradeoff.
+- Word2Vec embeddings + token count carry real signal, but richer features (TF-IDF, sentence count, punctuation density) could further improve performance.
+- Distributed computing was essential: Model 1 trained in ~4 s and Model 2 in ~71 s across 31 Ray executors — infeasible on a single machine at this data scale.
 
 ---
 
-## Data Sampling and Train / Validation / Test Split
+### Conclusion
 
-To reduce computational cost while maintaining class balance, a **two-step sampling strategy** was applied.
-
-### 1% Subset for Training
-
-A small subset of the dataset was used during experimentation to allow faster training iterations.
-
-### Stratified Sampling
-
-To address the strong class imbalance in `int_score`, stratified sampling was applied with the following fractions:
-
-| Score | Fraction |
-| ----- | -------- |
-| 0     | 1.0      |
-| 1     | 1.0      |
-| 2     | 1.0      |
-| 3     | 0.05     |
-| 4     | 0.30     |
-
-After sampling:
-
-| int_score | Documents |
-| --------- | --------- |
-| 3         | 83,826    |
-| 4         | 76,394    |
-
-### Dataset Split
-
-The sampled dataset was divided into:
-
-| Dataset    | Size   |
-| ---------- | ------ |
-| Train      | 96,141 |
-| Validation | 32,063 |
-| Test       | 32,016 |
-
-The **60 / 20 / 20 split** allows model training, hyperparameter tuning, and unbiased evaluation.
-
----
-
-## Models
-
-Two **Random Forest models** were trained to evaluate how increasing model capacity affects performance.
-
-### Model 1 — Baseline Random Forest
-
-**Hyperparameters**
-
-`numTrees = 5`, `maxDepth = 2`
-
-**Performance**
-
-| Metric              | Value  |
-| ------------------- | ------ |
-| Train Accuracy      | 0.6219 |
-| Validation Accuracy | 0.6197 |
-| Test Accuracy       | 0.6189 |
-
-This shallow model shows almost no overfitting but has limited predictive power.
-
----
-
-### Model 2 — Deeper Random Forest
-
-**Hyperparameters**
-
-`numTrees = 20`, `maxDepth = 8`
-
-**Performance**
-
-| Metric              | Value  |
-| ------------------- | ------ |
-| Train Accuracy      | 0.6998 |
-| Validation Accuracy | 0.6870 |
-| Test Accuracy       | 0.6867 |
-
-Increasing the number of trees and tree depth significantly improves model performance while maintaining acceptable generalization.
-
----
-
-## Model Comparison
-
-| Model                        | Train      | Validation | Test       |
-| ---------------------------- | ---------- | ---------- | ---------- |
-| RF (numTrees=5, maxDepth=2)  | 0.6219     | 0.6197     | 0.6189     |
-| RF (numTrees=20, maxDepth=8) | **0.6998** | **0.6870** | **0.6867** |
-
-The deeper Random Forest (**Model 2**) consistently performs better across all datasets.
-
----
-
-## Best Model
-
-The best performing model was:
-
-`RandomForestClassifier (numTrees = 20, maxDepth = 8)`
-
-**Test Accuracy**
-
-`0.6867`
-
-The trained model was saved to: `../models` directory
-
----
-
-### Fitting Analysis
-
-Model 1 sits near the **underfitting** end — a 0.30 pp train–test gap confirms good generalization but limited capacity. Model 2 introduces mild overfitting (1.31 pp gap) while delivering +6.78 pp test accuracy. Neither model is severely overfit; additional capacity and richer features are the primary levers for improvement in Milestone 4.
+Model 2 (`numTrees=20`, `maxDepth=8`) is the best model with **68.66% test accuracy** on a 3-class quality classification task. The pipeline is validated and scales well with Spark on Ray. Next steps include Gradient Boosted Trees and XGBoost with richer text features.
 
 ---
 
