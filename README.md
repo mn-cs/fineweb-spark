@@ -325,13 +325,106 @@ rf2 = RandomForestClassifier(numTrees=20, maxDepth=8)
 - Distributed computing was essential: Model 1 trained in ~4 s and Model 2 in ~71 s across 31 Ray executors — infeasible on a single machine at this data scale.
 
 ---
-
-### Conclusion
-
-Model 2 (`numTrees=20`, `maxDepth=8`) is the best model with **68.66% test accuracy** on a 3-class quality classification task. The pipeline is validated and scales well with Spark on Ray. Next steps include Gradient Boosted Trees and XGBoost with richer text features.
+### Prediction Analysis
+![Confusion Matrix 1](reports/figures/Milestone4/03-model-1-ConfMatrix.png)
 
 ---
 
+## Model 2 — Random Forest PCA
+
+**Notebook:** [notebooks/04-model-2-pca.ipynb](notebooks/04-model-2-pca.ipynb)
+
+---
+
+### Methods
+
+#### Distributed Computing Setup
+
+Training was performed on **SDSC Expanse** using **Ray + RayDP**:
+
+```python
+spark = raydp.init_spark(
+    app_name="FineWeb_Spark_on_Ray",
+    num_executors=31,
+    executor_cores=1,
+    executor_memory="4GB",
+)
+```
+
+#### Data
+
+A **20% random sample** (~142,623 rows) of the preprocessed data was used, split **60 / 20 / 20** into train, validation, and test sets.
+
+#### Feature Engineering Pipeline
+
+| Stage              | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `RegexTokenizer`   | Splits text into lowercase tokens on non-word characters        |
+| `StopWordsRemover` | Removes common English stop words                               |
+| `Word2Vec`         | 10-dimensional embeddings; `minCount=500`                       |
+| `Imputer`          | Fills missing `token_count` with the column mean                |
+| `VectorAssembler`  | Wraps `token_count` into a vector                               |
+| `StandardScaler`   | Standardizes `token_count` to zero mean and unit variance       |
+| `VectorAssembler`  | Combines text embeddings + scaled `token_count` into `features` |
+
+#### Models Trained
+
+Two `RandomForestClassifier` models were compared:
+
+```python
+# Model 1
+rf1 = RandomForestClassifier(numTrees=20, maxDepth=6)
+
+# Model 2
+rf2 = RandomForestClassifier(numTrees=80, maxDepth=10)
+```
+
+---
+
+### Results
+
+| Model                         | Train      | Val        | Test       | Train–Test Gap |
+| ----------------------------  | ---------- | ---------- | ---------- | -------------- |
+| RF (numTrees=20, maxDepth=6)  | 0.6391     | 0.6365     | 0.6319     | 0.0072         |
+| RF (numTrees=80, maxDepth=10) | **0.6707** | **0.6493** | **0.6458** | 0.0249         |
+
+**Best model:** `RandomForestClassifier (numTrees=80, maxDepth=10)` — saved to `models/`.
+
+---
+
+### Discussion
+
+- **Model 1** sits near **mild underfitting** (small gap, limited capacity).
+- **Model 2** shows **mild overfitting** (2.49 pp gap) but is well-controlled and **delivers the best accuracy**.
+- Reducing 11 → 5 dimensions costs ~4.1 pp accuracy but cuts training time from ~13 min to under 1 min.
+- Distributed computing was essential: Model 1 trained in ~5.5 s and Model 2 in ~58.6 s across 31 Ray executors — infeasible on a single machine at this data scale.
+
+---
+### Prediction Analysis
+![Confusion Matrix 2](reports/figures/Milestone4/04-model-2-pca-ConfMatrix.png)
+
+---
+### Conclusion
+
+**Model 1 — No PCA (`03-model-1.ipynb`)**
+
+Trained on the full 11-D feature vector. Best configuration: RF (`numTrees=20`, `maxDepth=8`) → **68.66% test accuracy**, 1.43 pp train–test gap. Good generalisation; the pipeline signal (Word2Vec + token count) is confirmed.
+
+**Model 2 — PCA k=5 (this notebook)**
+
+Trained on 5 PCA components. Best configuration: RF (`numTrees=80`, `maxDepth=10`) → **64.58% test accuracy**, 2.49 pp gap. PCA cuts training time dramatically but loses ~4 pp of accuracy due to aggressive compression.
+
+**Key finding**: PCA (`k=5`) is too aggressive here — the lost variance carries real discriminative signal for the Random Forest.
+
+**What can be done to improve it?**
+
+- Use a larger `k` (8–10) or inspect the explained-variance curve to pick the elbow
+- Enrich the input features before PCA (TF-IDF, stylistic features) to make compression less lossy
+- Try `GBTClassifier` which may extract more signal from the reduced representation
+- Include `label=5` and train a proper 3-class model
+- Scale to a larger data fraction to reduce variance across all metrics
+
+---
 ---
 
 ## Quick Setup
