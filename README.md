@@ -429,7 +429,13 @@ Trained on 5 PCA components. Best configuration: RF (`numTrees=80`, `maxDepth=10
 
 ## Statement of Collaboration
 
-**Justin Chanthabandith: Coder and Writer: Contribution**  
+**Michael: Team Leader / Project Manager / Coder and Writer: Contribution**  
+Led the project by organizing tasks, coordinating the team, and ensuring deadlines were met. Contributed to both the coding and the project write-up, supporting the overall implementation and documentation. Regularly asked the team for feedback on the documentation to improve clarity and quality.
+
+**Sopan: Coder and Writer: Contribution**  
+Contributed to both the coding and the project write-up. Assisted with implementation, debugging, and documenting the project. Collaborated with the team to support progress and ensure completion of assigned tasks.
+
+**Justin: Coder and Writer: Contribution**  
 Contributed to both the coding and write-up of the project. Supported the team leader by helping implement key components, debugging issues, and keeping progress on track. Actively checked in with teammates and asked if they needed help, providing support where needed. Assisted in writing and refining the final report and collaborated closely with the team.
 
 ---
