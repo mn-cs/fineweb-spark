@@ -427,6 +427,14 @@ Trained on 5 PCA components. Best configuration: RF (`numTrees=80`, `maxDepth=10
 ---
 ---
 
+## Statement of Collaboration
+
+**Justin Chanthabandith: Coder and Writer: Contribution**  
+Contributed to both the coding and write-up of the project. Supported the team leader by helping implement key components, debugging issues, and keeping progress on track. Actively checked in with teammates and asked if they needed help, providing support where needed. Assisted in writing and refining the final report and collaborated closely with the team.
+
+---
+---
+
 ## Quick Setup
 
 ```bash
