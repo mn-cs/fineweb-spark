@@ -2,6 +2,8 @@
 
 [![Python](https://img.shields.io/badge/Python-3.11.6-blue)](https://www.python.org/)
 [![PySpark](https://img.shields.io/badge/PySpark-3.5.0-orange)](https://spark.apache.org/)
+[![Ray](https://img.shields.io/badge/Ray-latest-028CF0)](https://www.ray.io/)
+[![RayDP](https://img.shields.io/badge/RayDP-latest-028CF0)](https://github.com/intel-analytics/raydp)
 [![Pandas](https://img.shields.io/badge/Pandas-2.0.3-150458)](https://pandas.pydata.org/)
 [![Matplotlib](https://img.shields.io/badge/Matplotlib-3.8.0-11557c)](https://matplotlib.org/)
 [![Seaborn](https://img.shields.io/badge/Seaborn-0.13.0-4c72b0)](https://seaborn.pydata.org/)
@@ -16,8 +18,6 @@ A reliable educational quality predictor has broad real-world impact: it can dri
 The FineWeb-Edu Sample-10BT subset alone contains **9.67 million documents** across 14 Parquet files. Loading, filtering, featurizing (Word2Vec over millions of documents), and training Random Forest models on this data is impractical on a single machine — it would take hours just to read the data, let alone train. Apache Spark on SDSC Expanse allows all of these steps to run in parallel across 32 cores, reducing training time from hours to seconds. Without Spark/Ray, the full pipeline would be computationally infeasible.
 
 **Notebook:** [notebooks/01-exploration.ipynb](notebooks/01-exploration.ipynb)
-
----
 
 ## Dataset
 
@@ -161,8 +161,6 @@ The token count distribution is heavily right-skewed. The median document length
 ![Score Distribution](reports/figures/Milestone2/score_dist.png)
 
 The quality score ranges from approximately 2.5 to 5.34, with a median of ~2.9 and mean ~3.0. The distribution is moderately right-skewed, with most documents concentrated in the lower-to-mid score range (int_score = 3). Very high-quality documents (score bucket 5) are relatively rare.
-
----
 
 ---
 
@@ -310,8 +308,8 @@ rf2 = RandomForestClassifier(numTrees=20, maxDepth=8)
 
 | Model                        | Train      | Val        | Test       | Train–Test Gap |
 | ---------------------------- | ---------- | ---------- | ---------- | -------------- |
-| RF (numTrees=5, maxDepth=2)  | 0.6133     | 0.6089     | 0.6083     | 0.0050         |
-| RF (numTrees=20, maxDepth=8) | **0.7009** | **0.6865** | **0.6866** | 0.0143         |
+| RF (numTrees=5, maxDepth=2)  | 0.6149     | 0.6101     | 0.6047     | 0.0102         |
+| RF (numTrees=20, maxDepth=8) | **0.6980** | **0.6807** | **0.6837** | 0.0143         |
 
 **Best model:** `RandomForestClassifier (numTrees=20, maxDepth=8)` — saved to `models/`.
 
@@ -319,13 +317,15 @@ rf2 = RandomForestClassifier(numTrees=20, maxDepth=8)
 
 ### Discussion
 
-- **Model 1** sits toward **underfitting** — the 0.5 pp train–test gap shows no overfitting, but `maxDepth=2` limits the model to simple decision boundaries.
-- **Model 2** shows **mild overfitting** (1.4 pp gap) but delivers +6.8 pp test accuracy, sitting in a better position on the bias–variance tradeoff.
+- **Model 1** sits toward **underfitting** — the 1.0 pp train–test gap shows minimal overfitting, but `maxDepth=2` limits the model to simple decision boundaries.
+- **Model 2** shows **mild overfitting** (1.4 pp gap) but delivers +7.9 pp test accuracy, sitting in a better position on the bias–variance tradeoff.
 - Word2Vec embeddings + token count carry real signal, but richer features (TF-IDF, sentence count, punctuation density) could further improve performance.
 - Distributed computing was essential: Model 1 trained in ~4 s and Model 2 in ~71 s across 31 Ray executors — infeasible on a single machine at this data scale.
 
 ---
+
 ### Prediction Analysis
+
 ![Confusion Matrix 1](reports/figures/Milestone4/03-model-1-ConfMatrix.png)
 
 ---
@@ -384,9 +384,9 @@ rf2 = RandomForestClassifier(numTrees=80, maxDepth=10)
 ### Results
 
 | Model                         | Train      | Val        | Test       | Train–Test Gap |
-| ----------------------------  | ---------- | ---------- | ---------- | -------------- |
-| RF (numTrees=20, maxDepth=6)  | 0.6391     | 0.6365     | 0.6319     | 0.0072         |
-| RF (numTrees=80, maxDepth=10) | **0.6707** | **0.6493** | **0.6458** | 0.0249         |
+| ----------------------------- | ---------- | ---------- | ---------- | -------------- |
+| RF (numTrees=20, maxDepth=6)  | 0.6381     | 0.6355     | 0.6322     | 0.0059         |
+| RF (numTrees=80, maxDepth=10) | **0.6698** | **0.6439** | **0.6434** | 0.0264         |
 
 **Best model:** `RandomForestClassifier (numTrees=80, maxDepth=10)` — saved to `models/`.
 
@@ -395,24 +395,27 @@ rf2 = RandomForestClassifier(numTrees=80, maxDepth=10)
 ### Discussion
 
 - **Model 1** sits near **mild underfitting** (small gap, limited capacity).
-- **Model 2** shows **mild overfitting** (2.49 pp gap) but is well-controlled and **delivers the best accuracy**.
-- Reducing 11 → 5 dimensions costs ~4.1 pp accuracy but cuts training time from ~13 min to under 1 min.
+- **Model 2** shows **mild overfitting** (2.64 pp gap) but is well-controlled and **delivers the best accuracy**.
+- Reducing 11 → 5 dimensions costs ~4.0 pp accuracy but cuts training time from ~13 min to under 1 min.
 - Distributed computing was essential: Model 1 trained in ~5.5 s and Model 2 in ~58.6 s across 31 Ray executors — infeasible on a single machine at this data scale.
 
 ---
+
 ### Prediction Analysis
+
 ![Confusion Matrix 2](reports/figures/Milestone4/04-model-2-pca-ConfMatrix.png)
 
 ---
+
 ### Conclusion
 
 **Model 1 — No PCA (`03-model-1.ipynb`)**
 
-Trained on the full 11-D feature vector. Best configuration: RF (`numTrees=20`, `maxDepth=8`) → **68.66% test accuracy**, 1.43 pp train–test gap. Good generalisation; the pipeline signal (Word2Vec + token count) is confirmed.
+Trained on the full 11-D feature vector. Best configuration: RF (`numTrees=20`, `maxDepth=8`) → **68.37% test accuracy**, 1.02 pp train–test gap. Good generalisation; the pipeline signal (Word2Vec + token count) is confirmed.
 
 **Model 2 — PCA k=5 (this notebook)**
 
-Trained on 5 PCA components. Best configuration: RF (`numTrees=80`, `maxDepth=10`) → **64.58% test accuracy**, 2.49 pp gap. PCA cuts training time dramatically but loses ~4 pp of accuracy due to aggressive compression.
+Trained on 5 PCA components. Best configuration: RF (`numTrees=80`, `maxDepth=10`) → **64.34% test accuracy**, 2.64 pp gap. PCA cuts training time dramatically but loses ~4.0 pp of accuracy due to aggressive compression.
 
 **Key finding**: PCA (`k=5`) is too aggressive here — the lost variance carries real discriminative signal for the Random Forest.
 
@@ -424,7 +427,6 @@ Trained on 5 PCA components. Best configuration: RF (`numTrees=80`, `maxDepth=10
 - Include `label=5` and train a proper 3-class model
 - Scale to a larger data fraction to reduce variance across all metrics
 
----
 ---
 
 ## Statement of Collaboration
@@ -438,7 +440,6 @@ Contributed to both the coding and the project write-up. Assisted with implement
 **Justin: Coder and Writer: Contribution**  
 Contributed to both the coding and write-up of the project. Supported the team leader by helping implement key components, debugging issues, and keeping progress on track. Actively checked in with teammates and asked if they needed help, providing support where needed. Assisted in writing and refining the final report and collaborated closely with the team.
 
----
 ---
 
 ## Quick Setup
