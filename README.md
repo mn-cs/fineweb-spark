@@ -445,7 +445,6 @@ Contributed to both the coding and write-up of the project. Supported the team l
 ## Quick Setup
 
 ```bash
-
 git clone https://github.com/mn-cs/fineweb-spark
 cd fineweb-spark
 
